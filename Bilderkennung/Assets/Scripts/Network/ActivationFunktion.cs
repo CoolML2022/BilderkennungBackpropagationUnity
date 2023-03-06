@@ -16,7 +16,6 @@ public class ActivationFunktion
             return a * (1 - a);
         }
     }
-
     public class TanH
     {
         public double Activate(double inputs)
@@ -25,7 +24,6 @@ public class ActivationFunktion
             return (e2 - 1) / (e2 + 1);
 
         }
-
         public double Derivative(double inputs)
         {
             double e2 = Exp(2 * inputs);
@@ -44,7 +42,6 @@ public class ActivationFunktion
             return (inputs > 0) ? 1 : 0;
         }
     }
-
     public class SiLU 
     {
         public double Activate(double inputs)

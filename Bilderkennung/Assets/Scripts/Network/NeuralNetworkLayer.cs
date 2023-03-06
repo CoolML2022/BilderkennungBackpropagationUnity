@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static System.Math;
+using System.IO;
+using static UnityEngine.Random;
 
 public class NeuralNetworkLayer : MonoBehaviour
 {
@@ -19,14 +20,12 @@ public class NeuralNetworkLayer : MonoBehaviour
         {
             layers[i] = new Layer(layerSizes[i], layerSizes[i + 1], learinigRate, momentumRate);
         }
-
     }
     public double[] FeedForward(double[] inputs)
     {
         layers[0].CalculateForward(inputs);
         for (int i = 1; i < layers.Length; i++)
         {
-
             layers[i].CalculateForward(layers[i - 1].outputs);
         }
         return layers[layers.Length - 1].outputs;
@@ -102,20 +101,20 @@ public class NeuralNetworkLayer : MonoBehaviour
             }
             return outputs;
         }
-        //randomizes the weights
-        private System.Random rnd;
+        //randomizes the weights and sets Biases to zero
         public void InitilizeWeights()
         {
             for (int i = 0; i < numOfOutputs; i++)
             {
                 for (int j = 0; j < numOfInputs; j++)
                 {
-                    weights[i, j] = UnityEngine.Random.Range(-1f, 1f);//(0.001 - 0.0001) * rnd.NextDouble() + 0.0001;
+                    weights[i, j] = Random.Range(-1f, 1f);
                 }
                 biases[i] = 0;
             }
         }
-        //Assing new Weight Values to the Neural Network
+        //Assing new Weight/Bias Values to the Neural Network
+        //Applying Momentum to the delta and saving it to the "prev" (prevoius) weights/biases
         public void UpdateWeightsBiases()
         {
             for (int i = 0; i < numOfOutputs; i++)
@@ -131,7 +130,7 @@ public class NeuralNetworkLayer : MonoBehaviour
                 prevbiasesDelta[i] = biasDelta;
             }
         }
-        //calcul
+        //Calculates the deltas from the OutputLayer
         public void BackPropOutputLayer(double[] expected)
         {
             for (int i = 0; i < numOfOutputs; i++)
@@ -151,6 +150,7 @@ public class NeuralNetworkLayer : MonoBehaviour
                 biasesDelta[i] = gamma[i];
             }
         }
+        //Calculates the deltas from the hidden Layers
         public void BackPropHiddenLayer(double[] gammaForward, double[,] weightsForward)
         {
             for (int i = 0; i < numOfOutputs; i++)

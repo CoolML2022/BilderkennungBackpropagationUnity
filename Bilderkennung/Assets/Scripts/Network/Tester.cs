@@ -14,14 +14,7 @@ public class Tester : MonoBehaviour
     private double momentumRate;
     private DataSet data;
     NeuralNetworkLayer network;
-    //0 0 0 -> 0
-    //0 0 1 -> 1
-    //0 1 0 -> 1
-    //1 0 0 -> 1
-    //1 1 0 -> 0
-    //0 1 1 -> 0
-    //1 0 1 -> 0
-    //1 1 1 -> 1
+
     public Tester(int[] layerSizes, double learningRate, double momentumRate, DataSet dataSet, NeuralNetworkLayer network)
     {
         this.layerSizes = layerSizes;
@@ -30,8 +23,17 @@ public class Tester : MonoBehaviour
         this.data = dataSet;
         this.network = network;
     }
-    public void Train(int NumOfIteration)
+    public void XOR_Train(int NumOfIteration)
     {
+
+        //0 0 0 -> 0
+        //0 0 1 -> 1
+        //0 1 0 -> 1
+        //1 0 0 -> 1
+        //1 1 0 -> 0
+        //0 1 1 -> 0
+        //1 0 1 -> 0
+        //1 1 1 -> 1
         NeuralNetworkLayer net = new NeuralNetworkLayer(layerSizes, learningRate, momentumRate);
 
         for (int i = 0; i < NumOfIteration; i++)
@@ -81,8 +83,8 @@ public class Tester : MonoBehaviour
         double[] expectedOutput;
         for (int i = 0; i < NumOfIterationBeforeTest; i++)
         {       
-            randomImage = UnityEngine.Random.Range(0, numOfImages);
-            randomImageIndex = UnityEngine.Random.Range(0, data.trainValues[randomImage].GetLength(0));
+            randomImage = Random.Range(0, numOfImages);
+            randomImageIndex = Random.Range(0, data.trainValues[randomImage].GetLength(0));
             expectedOutput = new double[numOfImages];
             expectedOutput[randomImage] = 1;
             network.FeedForward(data.trainValues[randomImage].GetRow<double>(randomImageIndex));
@@ -94,11 +96,10 @@ public class Tester : MonoBehaviour
         //RunRandomTest
         //
         //
-        randomImage = UnityEngine.Random.Range(0, numOfImages);
-        randomImageIndex = UnityEngine.Random.Range(0, data.testValues[randomImage].GetLength(0));
+        randomImage = Random.Range(0, numOfImages);
+        randomImageIndex = Random.Range(0, data.testValues[randomImage].GetLength(0));
         double[] predictedOutput = network.FeedForward(data.testValues[randomImage].GetRow<double>(randomImageIndex));
-        string predicted = FindName(FindMaxValueIndex(predictedOutput));
-        //Debug.Log("Expected: " + FindName(ImageIndexTest) + "Networks prediction: " + predicted + " Time: "+ (Time.realtimeSinceStartup - startTime) * 1000f + "ms" + " Iteration: " + Counter * NumOfIterationBeforeTest);
+        //Checks if the predicted Output equals the correct Output
         if (FindMaxValueIndex(predictedOutput) == randomImage)
         {
             correctCounter++;
