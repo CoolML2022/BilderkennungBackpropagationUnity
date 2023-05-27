@@ -9,10 +9,13 @@ public class NetworkSettings : MonoBehaviour
     [SerializeField] public double LearningRate = 0.1;
     [SerializeField] public double momentumRate = 0.9;
     [SerializeField] public ActivationFunctionEnum ActivationFunction;
+    [SerializeField] public ActivationFunctionEnumOutput ActivationFunctionOutput;
+    [Range(0, 1)] public float MinAccuracy = .6f;
     [Header("Train Settings")]
     [SerializeField] public int NumOfTrainingBevoreTest = 10;
     [SerializeField] private int NumOfImages;
     [Range(0, 1)] public float TrainingSplit;
+
 
     private static ActivationFunctionEnum activationH;
     Tester tester;
@@ -22,11 +25,14 @@ public class NetworkSettings : MonoBehaviour
     //public bool StopTraining = false;
     private void Awake()
     {
-        network = new NeuralNetworkLayer(LayerSizes, LearningRate, momentumRate);
+        network = new NeuralNetworkLayer(LayerSizes, LearningRate, momentumRate, ActivationFunction, ActivationFunctionOutput);
         dataSet = new DataSet(NumOfImages, TrainingSplit);
-        tester = new Tester(LayerSizes, LearningRate, momentumRate,dataSet,network );
-        activationH = ActivationFunction;   
-        //tester.XOR_Train(50);
+        tester = new Tester(LayerSizes, LearningRate, momentumRate, dataSet, network, MinAccuracy);
+        //tester = new Tester(LayerSizes, LearningRate, momentumRate);
+        activationH = ActivationFunction;
+        //tester.XOR_Train(5000);
+        //tester.TrainWithData(NumOfTrainingBevoreTest);
+        //tester.LoadTest();
     }
     private void OnGUI()
     {
@@ -39,24 +45,20 @@ public class NetworkSettings : MonoBehaviour
     {
         stopTraining = !stopTraining;
     }
-    ActivationFunktion.Sigmoid Sigmoid = new ActivationFunktion.Sigmoid();
-    ActivationFunktion.TanH TanH = new ActivationFunktion.TanH();
-    ActivationFunktion.ReLU ReLU = new ActivationFunktion.ReLU();
-    ActivationFunktion.SiLU SiLU = new ActivationFunktion.SiLU();
     public double Activation(double input)
     {
         switch (activationH)
         {
             case ActivationFunctionEnum.Sigmoid:
-                return Sigmoid.Activate(input);
+                return ActivationFunktion.Sigmoid.Activate(input);
             case ActivationFunctionEnum.ReLU:
-                return ReLU.Activate(input);
+                return ActivationFunktion.ReLU.Activate(input);
             case ActivationFunctionEnum.SiLU:
-                return SiLU.Activate(input);
+                return ActivationFunktion.SiLU.Activate(input);
             case ActivationFunctionEnum.TanH:
-                return TanH.Activate(input);
+                return ActivationFunktion.TanH.Activate(input);
             default:
-                return TanH.Activate(input);
+                return ActivationFunktion.TanH.Activate(input);
         }
     }
     public double Derivative(double input)
@@ -64,19 +66,26 @@ public class NetworkSettings : MonoBehaviour
         switch (activationH)
         {
             case ActivationFunctionEnum.Sigmoid:
-                return Sigmoid.Derivative(input);
+                return ActivationFunktion.Sigmoid.Derivative(input);
             case ActivationFunctionEnum.ReLU:
-                return ReLU.Derivative(input);
+                return ActivationFunktion.ReLU.Derivative(input);
             case ActivationFunctionEnum.SiLU:
-                return SiLU.Derivative(input);
+                return ActivationFunktion.SiLU.Derivative(input);
             case ActivationFunctionEnum.TanH:
-                return TanH.Derivative(input);
+                return ActivationFunktion.TanH.Derivative(input);
             default:
-                return TanH.Derivative(input);
+                return ActivationFunktion.TanH.Derivative(input);
         }
     }
 }
 public enum ActivationFunctionEnum
+{
+    TanH,
+    ReLU,
+    SiLU,
+    Sigmoid
+};
+public enum ActivationFunctionEnumOutput
 {
     TanH,
     ReLU,

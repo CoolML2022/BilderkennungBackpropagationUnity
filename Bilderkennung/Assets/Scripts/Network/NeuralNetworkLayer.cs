@@ -2,14 +2,18 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using static System.Math;
 using static UnityEngine.Random;
 
 public class NeuralNetworkLayer : MonoBehaviour
 {
     int[] layerSizes;
     Layer[] layers;
-    public NeuralNetworkLayer(int[] layerSizes, double learinigRate, double momentumRate)
+    MetaData metaData;
+
+    public NeuralNetworkLayer(int[] layerSizes, double learinigRate, double momentumRate, ActivationFunctionEnum activationH, ActivationFunctionEnumOutput activationO)
     {
+        metaData = new MetaData();
         this.layerSizes = new int[layerSizes.Length];
         for (int i = 0; i < layerSizes.Length; i++)
             this.layerSizes[i] = layerSizes[i];
@@ -18,17 +22,65 @@ public class NeuralNetworkLayer : MonoBehaviour
 
         for (int i = 0; i < layers.Length; i++)
         {
-            layers[i] = new Layer(layerSizes[i], layerSizes[i + 1], learinigRate, momentumRate);
+            layers[i] = new Layer(layerSizes[i], layerSizes[i + 1], learinigRate, momentumRate, activationH, activationO);
         }
+        metaData.layerSizes = layerSizes;
+        metaData.learinigRate = learinigRate;
+        metaData.momentumRate = momentumRate;
+        metaData.activationH = activationH;
+        metaData.activationO = activationO;
+
+    }
+    public NeuralNetworkLayer(string Path)
+    {
+        string metaDataString = File.ReadAllText(Path + $"/MetaData.txt");
+        MetaData metaData = JsonUtility.FromJson<MetaData>(metaDataString);
+        this.layerSizes = metaData.layerSizes;
+
+        this.layerSizes = new int[metaData.layerSizes.Length];
+        for (int i = 0; i < metaData.layerSizes.Length; i++)
+            this.layerSizes[i] = metaData.layerSizes[i];
+
+        layers = new Layer[layerSizes.Length - 1];
+
+        for (int i = 0; i < layers.Length; i++)
+        {
+            layers[i] = new Layer(layerSizes[i], layerSizes[i + 1], metaData.learinigRate, metaData.momentumRate, metaData.activationH, metaData.activationO);
+        }
+        LoadNetwork(Path);
     }
     public double[] FeedForward(double[] inputs)
     {
         layers[0].CalculateForward(inputs);
-        for (int i = 1; i < layers.Length; i++)
+        for (int i = 1; i < layers.Length - 1; i++)
         {
             layers[i].CalculateForward(layers[i - 1].outputs);
         }
+        layers[layers.Length - 1].CalculateOutputLayer(layers[layers.Length - 2].outputs);
         return layers[layers.Length - 1].outputs;
+    }
+    public void SaveNetwork()
+    { 
+        for (int i = 0; i < layers.Length; i++)
+        {
+            string LayerString = JsonUtility.ToJson(layers[i]);
+            File.WriteAllText(Application.dataPath + $"/NetworkSaveFolder/Layer-{i}.txt", LayerString);
+        }
+        string metaDataString = JsonUtility.ToJson(metaData);
+        File.WriteAllText(Application.dataPath + $"/NetworkSaveFolder/MetaData.txt", metaDataString);
+    }
+    public void LoadNetwork(string Path)
+    {
+        for(int i = 0; i < layerSizes.Length -1; i++)
+        {
+            string LayerString = File.ReadAllText(Path + $"/Layer-{i}.txt");
+            Layer layer = JsonUtility.FromJson<Layer>(LayerString);
+            layers[i].biases = layer.biases;
+            layers[i].flattendWeights = layer.flattendWeights;
+            layers[i].numOfInputs = layer.numOfInputs;
+            layers[i].numOfOutputs = layer.numOfOutputs;
+            layers[i].UnflattenWeights();
+        }
     }
 
     public void BackProp(double[] expeted)
@@ -52,22 +104,44 @@ public class NeuralNetworkLayer : MonoBehaviour
     }
     public class Layer
     {
-        int numOfInputs;
-        int numOfOutputs;
-        double learinigRate;
-        double momentumRate;
-        public double[] outputs;
-        public double[] inputs;
-        public double[,] weights;
+        public int numOfInputs;
+        public int numOfOutputs;
         public double[] biases;
-        public double[,] weightsDelta;
-        public double[,] prevweightsDelta;
-        public double[] biasesDelta;
-        public double[] prevbiasesDelta;
-        public double[] gamma;
-        public double[] error;
-        NetworkSettings network = new NetworkSettings();
+        public double[] flattendWeights;
+        [System.NonSerialized] ActivationFunctionEnum activationH;
+        [System.NonSerialized] ActivationFunctionEnumOutput activationO;
+        [System.NonSerialized] public double learinigRate;
+        [System.NonSerialized] public double momentumRate;
+        [System.NonSerialized] public double[] inputs;
+        [System.NonSerialized] public double[] outputs;
+        [System.NonSerialized] public double[,] weights;
+        [System.NonSerialized] public double[,] weightsDelta;
+        [System.NonSerialized] public double[,] prevweightsDelta;
+        [System.NonSerialized] public double[] biasesDelta;
+        [System.NonSerialized] public double[] prevbiasesDelta;
+        [System.NonSerialized] public double[] gamma;
+        [System.NonSerialized] public double[] error;
         //Initialize
+        public Layer(int numOfInputs, int numOfOutputs, double learinigRate, double momentumRate, ActivationFunctionEnum activationH, ActivationFunctionEnumOutput activationO)
+        {
+            this.activationH = activationH;
+            this.activationO = activationO;
+            this.numOfInputs = numOfInputs;
+            this.numOfOutputs = numOfOutputs;
+            this.learinigRate = learinigRate;
+            this.momentumRate = momentumRate;
+            outputs = new double[numOfOutputs];
+            inputs = new double[numOfInputs];
+            weights = new double[numOfOutputs, numOfInputs];
+            biases = new double[numOfOutputs];
+            weightsDelta = new double[numOfOutputs, numOfInputs];
+            biasesDelta = new double[numOfOutputs];
+            prevweightsDelta = new double[numOfOutputs, numOfInputs];
+            prevbiasesDelta = new double[numOfOutputs];
+            gamma = new double[numOfOutputs];
+            error = new double[numOfOutputs];
+            InitilizeWeights();
+        }
         public Layer(int numOfInputs, int numOfOutputs, double learinigRate, double momentumRate)
         {
             this.numOfInputs = numOfInputs;
@@ -97,7 +171,21 @@ public class NeuralNetworkLayer : MonoBehaviour
                 {
                     outputs[i] += inputs[j] * weights[i, j];
                 }
-                outputs[i] = network.Activation(outputs[i]);
+                outputs[i] = ActivationHidden(outputs[i]);
+            }
+            return outputs;
+        }
+        public double[] CalculateOutputLayer(double[] inputs)
+        {
+            this.inputs = inputs;
+            for (int i = 0; i < numOfOutputs; i++)
+            {
+                outputs[i] = biases[i];
+                for (int j = 0; j < numOfInputs; j++)
+                {
+                    outputs[i] += inputs[j] * weights[i, j];
+                }
+                outputs[i] = ActivationOutput(outputs[i]);
             }
             return outputs;
         }
@@ -112,6 +200,10 @@ public class NeuralNetworkLayer : MonoBehaviour
                 }
                 biases[i] = 0;
             }
+        }
+        public void UnflattenWeights()
+        {
+            weights = ArrayFlattener.Unflatten<double>(flattendWeights, numOfOutputs, numOfInputs);
         }
         //Assing new Weight/Bias Values to the Neural Network
         //Applying Momentum to the delta and saving it to the "prev" (prevoius) weights/biases
@@ -129,6 +221,7 @@ public class NeuralNetworkLayer : MonoBehaviour
                 biases[i] -= biasDelta * learinigRate;
                 prevbiasesDelta[i] = biasDelta;
             }
+            flattendWeights = ArrayFlattener.Flatten<double>(weights);
         }
         //Calculates the deltas from the OutputLayer
         public void BackPropOutputLayer(double[] expected)
@@ -139,7 +232,7 @@ public class NeuralNetworkLayer : MonoBehaviour
             }
             for (int i = 0; i < numOfOutputs; i++)
             {
-                gamma[i] = error[i] * network.Derivative(outputs[i]);
+                gamma[i] = error[i] * DerivativeOutput(outputs[i]);
             }
             for (int i = 0; i < numOfOutputs; i++)
             {
@@ -160,7 +253,7 @@ public class NeuralNetworkLayer : MonoBehaviour
                 {
                     gamma[i] += gammaForward[j] * weightsForward[j, i];
                 }
-                gamma[i] *= network.Derivative(outputs[i]);
+                gamma[i] *= DerivativeHidden(outputs[i]);
             }
             for (int i = 0; i < numOfOutputs; i++)
             {
@@ -171,6 +264,78 @@ public class NeuralNetworkLayer : MonoBehaviour
                 biasesDelta[i] = gamma[i];
             }
         }
+        public double ActivationHidden(double input)
+        {
+            switch (activationH)
+            {
+                case ActivationFunctionEnum.Sigmoid:
+                    return ActivationFunktion.Sigmoid.Activate(input);
+                case ActivationFunctionEnum.ReLU:
+                    return ActivationFunktion.ReLU.Activate(input);
+                case ActivationFunctionEnum.SiLU:
+                    return ActivationFunktion.SiLU.Activate(input);
+                case ActivationFunctionEnum.TanH:
+                    return ActivationFunktion.TanH.Activate(input);
+                default:
+                    return ActivationFunktion.TanH.Activate(input);
+            }
+        }
+        public double ActivationOutput(double input)
+        {
+            switch (activationO)
+            {
+                case ActivationFunctionEnumOutput.Sigmoid:
+                    return ActivationFunktion.Sigmoid.Activate(input);
+                case ActivationFunctionEnumOutput.ReLU:
+                    return ActivationFunktion.ReLU.Activate(input);
+                case ActivationFunctionEnumOutput.SiLU:
+                    return ActivationFunktion.SiLU.Activate(input);
+                case ActivationFunctionEnumOutput.TanH:
+                    return ActivationFunktion.TanH.Activate(input);
+                default:
+                    return ActivationFunktion.TanH.Activate(input);
+            }
+        }
+        public double DerivativeHidden(double input)
+        {
+            switch (activationH)
+            {
+                case ActivationFunctionEnum.Sigmoid:
+                    return ActivationFunktion.Sigmoid.Derivative(input);
+                case ActivationFunctionEnum.ReLU:
+                    return ActivationFunktion.ReLU.Derivative(input);
+                case ActivationFunctionEnum.SiLU:
+                    return ActivationFunktion.SiLU.Derivative(input);
+                case ActivationFunctionEnum.TanH:
+                    return ActivationFunktion.TanH.Derivative(input);
+                default:
+                    return ActivationFunktion.TanH.Derivative(input);
+            }
+        }
+        public double DerivativeOutput(double input)
+        {
+            switch (activationO)
+            {
+                case ActivationFunctionEnumOutput.Sigmoid:
+                    return ActivationFunktion.Sigmoid.Derivative(input);
+                case ActivationFunctionEnumOutput.ReLU:
+                    return ActivationFunktion.ReLU.Derivative(input);
+                case ActivationFunctionEnumOutput.SiLU:
+                    return ActivationFunktion.SiLU.Derivative(input);
+                case ActivationFunctionEnumOutput.TanH:
+                    return ActivationFunktion.TanH.Derivative(input);
+                default:
+                    return ActivationFunktion.TanH.Derivative(input);
+            }
+        }
+    }
+    public class MetaData
+    {
+        public int[] layerSizes;
+        public double momentumRate;
+        public double learinigRate;
+        public ActivationFunctionEnum activationH;
+        public ActivationFunctionEnumOutput activationO;
     }
 }
 

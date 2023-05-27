@@ -1,0 +1,1 @@
+{"layerSizes":[784,300,2],"momentumRate":0.9,"learinigRate":0.05,"activationH":0,"activationO":3}
